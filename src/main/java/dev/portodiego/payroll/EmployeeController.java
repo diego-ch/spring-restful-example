@@ -9,30 +9,24 @@ import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.text.html.parser.Entity;
-
 @RestController
 class EmployeeController {
 
     private final EmployeeRepository repository;
+    private final EmployeeModelAssembler assembler;
 
-    EmployeeController(EmployeeRepository repository) {
+    EmployeeController(EmployeeRepository repository, EmployeeModelAssembler assembler) {
         this.repository = repository;
+        this.assembler = assembler;
     }
 
     @GetMapping("/employees")
     CollectionModel<EntityModel<Employee>> all() {
         List<EntityModel<Employee>> employees = repository.findAll().stream()
-                .map(e -> EntityModel.of(
-                        e,
-                        linkTo(methodOn(EmployeeController.class).read(e.getId())).withSelfRel(),
-                        linkTo(methodOn(EmployeeController.class).all()).withRel("employees")))
+                .map(assembler::toModel)
                 .collect(Collectors.toList());
 
-        return CollectionModel.of(
-                employees,
-                linkTo(methodOn(EmployeeController.class).all()).withSelfRel()
-        );
+        return CollectionModel.of(employees, linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
     }
 
     @PostMapping("/employees")
@@ -46,11 +40,7 @@ class EmployeeController {
                 .findById(id)
                 .orElseThrow(() -> new EmployeeNotFoundException(id));
 
-        return EntityModel.of(
-                employee,
-                linkTo(methodOn(EmployeeController.class).read(id)).withSelfRel(),
-                linkTo(methodOn(EmployeeController.class).all()).withRel("employees")
-        );
+        return assembler.toModel(employee);
     }
 
     @PutMapping("/employees/{id}")
