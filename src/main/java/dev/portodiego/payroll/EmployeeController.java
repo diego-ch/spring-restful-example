@@ -3,9 +3,13 @@ package dev.portodiego.payroll;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.*;
+
+import javax.swing.text.html.parser.Entity;
 
 @RestController
 class EmployeeController {
@@ -17,8 +21,18 @@ class EmployeeController {
     }
 
     @GetMapping("/employees")
-    List<Employee> all() {
-        return repository.findAll();
+    CollectionModel<EntityModel<Employee>> all() {
+        List<EntityModel<Employee>> employees = repository.findAll().stream()
+                .map(e -> EntityModel.of(
+                        e,
+                        linkTo(methodOn(EmployeeController.class).read(e.getId())).withSelfRel(),
+                        linkTo(methodOn(EmployeeController.class).all()).withRel("employees")))
+                .collect(Collectors.toList());
+
+        return CollectionModel.of(
+                employees,
+                linkTo(methodOn(EmployeeController.class).all()).withSelfRel()
+        );
     }
 
     @PostMapping("/employees")
